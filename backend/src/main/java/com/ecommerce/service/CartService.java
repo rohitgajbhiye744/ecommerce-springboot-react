@@ -12,7 +12,6 @@ import com.ecommerce.repository.CartRepository;
 @Service
 public class CartService {
 	@Autowired
-	
 	private CartRepository cartRepository ; 
 	
 	public Cart addToCart(int userId , int productId , int quantity) {
@@ -35,6 +34,14 @@ public class CartService {
 	
 	public Cart getCart(int userId) {
 		return cartRepository.findByUserId(userId);
+	}
+
+	public void clearCart(int userId) {
+		Cart cart = cartRepository.findByUserId(userId);
+		if (cart != null && cart.getItems() != null) {
+			cart.getItems().clear();
+			cartRepository.save(cart);
+		}
 	}
 
 }

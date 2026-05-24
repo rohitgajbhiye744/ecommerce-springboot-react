@@ -69,6 +69,16 @@ function AppInner() {
     };
   };
 
+  const onOrderPlaced = () => {
+    if (!currentUser?.id) {
+      return;
+    }
+    setCartRefreshKey((prev) => prev + 1);
+    getCart(currentUser.id)
+      .then((cart) => setCartCount(cart?.items?.length || 0))
+      .catch(() => { });
+  };
+
   const role = useMemo(
     () => (currentUser?.role || 'USER').toUpperCase(),
     [currentUser],
@@ -94,7 +104,7 @@ function AppInner() {
           />
           <Route
             path="/orders"
-            element={<Orders currentUser={currentUser} />}
+            element={<Orders currentUser={currentUser} cartCount={cartCount} onOrderPlaced={onOrderPlaced} />}
           />
           <Route
             path="/signin"

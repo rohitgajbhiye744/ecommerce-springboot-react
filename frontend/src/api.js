@@ -123,3 +123,23 @@ export async function placeOrder(userId) {
 
   return response.json();
 }
+
+export async function fetchOrders(userId) {
+  const response = await fetch(`${API_BASE_URL}/orders/${userId}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch orders: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function deleteOrder(orderId) {
+  const response = await fetch(`${API_BASE_URL}/orders/delete/${orderId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok && response.status !== 204) {
+    throw new Error(`Failed to delete order: ${response.status}`);
+  }
+}

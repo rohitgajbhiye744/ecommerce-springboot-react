@@ -1,5 +1,7 @@
 package com.ecommerce.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +14,9 @@ public class OrderService {
 	
 	@Autowired
 	private OrderRepository orderRepository ;
+
+	@Autowired
+	private CartService cartService;
 	
 	
 	public Order placeOrder(Cart cart) {
@@ -28,7 +33,19 @@ public class OrderService {
 		Order order = new Order();
 		order.setUserId(cart.getUserId());
 		order.setTotalAmount(total);
-		return orderRepository.save(order);		
+		Order savedOrder = orderRepository.save(order);
+		cartService.clearCart((int) cart.getUserId());
+		return savedOrder;		
+	}
+
+	public List<Order> getOrdersForUser(long userId) {
+		return orderRepository.findByUserId(userId);
+	}
+
+	public void deleteOrder(long orderId) {
+		if (orderRepository.existsById(orderId)) {
+			orderRepository.deleteById(orderId);
+		}
 	}
 
 }

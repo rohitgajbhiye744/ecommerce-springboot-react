@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { placeOrder } from '../api';
+import { placeOrder, fetchOrders } from '../api';
 import { useToast } from '../context/ToastContext';
 
 function formatINR(amount) {
@@ -9,11 +9,30 @@ function formatINR(amount) {
   }).format(amount);
 }
 
-function Orders({ currentUser }) {
+function Orders({ currentUser, cartCount = 0, onOrderPlaced }) {
   const [orderResult, setOrderResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [orders, setOrders] = useState([]);
   const navigate = useNavigate();
   const toast = useToast();
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setOrders([]);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const data = await fetchOrders(currentUser.id);
+        setOrders(Array.isArray(data) ? data : []);
+      } catch {
+        setOrders([]);
+      }
+    };
+
+    load();
+  }, [currentUser?.id, orderResult]);
 
   const handlePlaceOrder = async () => {
     if (!currentUser?.id) {
@@ -25,6 +44,9 @@ function Orders({ currentUser }) {
       const createdOrder = await placeOrder(currentUser.id);
       setOrderResult(createdOrder);
       toast('Order placed successfully! 🎉', 'success');
+      if (onOrderPlaced) {
+        onOrderPlaced();
+      }
     } catch (err) {
       toast(err.message || 'Unable to place order.', 'error');
     } finally {
@@ -49,6 +71,8 @@ function Orders({ currentUser }) {
     );
   }
 
+  const canPlaceOrder = cartCount > 0;
+
   return (
     <div className="orders-page">
       <h1 className="page-title">My Orders</h1>
@@ -59,10 +83,16 @@ function Orders({ currentUser }) {
         <div className="order-checkout-card">
           <div className="order-checkout-info">
             <h2>🛍️ Quick Checkout</h2>
-            <p>
-              Create an order instantly from your current bag. Free delivery on all orders.
-              Estimated delivery: 2–5 business days.
-            </p>
+            {canPlaceOrder ? (
+              <p>
+                Create an order instantly from your current bag. Free delivery on all orders.
+                Estimated delivery: 2–5 business days.
+              </p>
+            ) : (
+              <p>
+                Your bag is currently empty. Add items to your cart from the Products page to place a new order.
+              </p>
+            )}
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, color: 'var(--brand-green)', background: '#e8f5f0', border: '1px solid #a7dfc8', borderRadius: 999, padding: '3px 10px', fontWeight: 700 }}>
                 ✓ Free Delivery
@@ -79,14 +109,14 @@ function Orders({ currentUser }) {
             <button
               className="btn primary lg"
               onClick={handlePlaceOrder}
-              disabled={loading}
+              disabled={loading || !canPlaceOrder}
             >
               {loading ? (
                 <>
                   <span className="spinner spinner-sm" style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} />
                   Placing…
                 </>
-              ) : '🎉 Place Order'}
+              ) : (canPlaceOrder ? '🎉 Place Order' : 'Add items to cart')}
             </button>
             <button className="btn ghost sm" onClick={() => navigate('/cart')}>
               ← Back to Cart
@@ -122,6 +152,47 @@ function Orders({ currentUser }) {
           </div>
         </div>
       )}
+
+      {/* Placed orders list */}
+      <div className="orders-list" style={{ marginTop: 32 }}>
+        <h2 style={{ marginBottom: 12 }}>Placed Orders</h2>
+        {orders.length === 0 ? (
+          <p style={{ fontSize: 14, color: 'var(--text-light)' }}>
+            You have not placed any orders yet.
+          </p>
+        ) : (
+          <div>
+            {orders.map((order) => (
+              <div
+                key={order.oId || order.id}
+                className="order-row"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid #eceff4',
+                  background: '#fff',
+                  marginBottom: 8,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>
+                    Order #{order.oId || order.id}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-light)' }}>
+                    Thank you for shopping with Shopcart India.
+                  </div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {order.totalAmount != null ? formatINR(order.totalAmount) : '--'}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
