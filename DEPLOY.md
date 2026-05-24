@@ -1,20 +1,27 @@
-# 🚀 Deployment Guide — Railway (Backend) + Vercel (Frontend)
+# 🚀 Deployment Guide — TiDB Cloud (DB) + Render (Backend) + Vercel (Frontend)
 
-This guide deploys your Spring Boot + MySQL backend to **Railway** and your React frontend to **Vercel**, both for free.
+**100% Free Forever. No credit card required. No expiry.**
+
+| Layer | Service | URL |
+|-------|---------|-----|
+| 🗄️ Database | TiDB Cloud Serverless | https://tidbcloud.com |
+| ☕ Backend | Render | https://render.com |
+| ⚛️ Frontend | Vercel | https://vercel.com |
 
 ---
 
 ## Prerequisites
 
-- [ ] A **GitHub account** with this repo pushed (public or private)
-- [ ] Sign up at https://railway.app (use GitHub login — free)
-- [ ] Sign up at https://vercel.com (use GitHub login — free)
+- [ ] GitHub account with this repo pushed (public recommended)
+- [ ] Sign up at https://tidbcloud.com (free, no credit card)
+- [ ] Sign up at https://render.com (free, use GitHub login)
+- [ ] Sign up at https://vercel.com (free, use GitHub login)
 
 ---
 
 ## STEP 1 — Push latest code to GitHub
 
-Make sure all your latest changes are committed and pushed:
+Make sure all changes are committed and pushed:
 
 ```bash
 git add .
@@ -24,132 +31,190 @@ git push origin main
 
 ---
 
-## STEP 2 — Deploy MySQL on Railway
+## STEP 2 — Set up Free MySQL Database on TiDB Cloud
 
-1. Go to https://railway.app → **New Project**
-2. Click **"Deploy a template"** → search **MySQL** → click **Deploy**
-3. Wait for the MySQL service to start (green status)
-4. Click on the MySQL service → go to **Variables** tab
-5. Note down these values (you'll need them in Step 3):
-   - `MYSQLHOST`
-   - `MYSQLPORT`
-   - `MYSQLDATABASE`
-   - `MYSQLUSER`
-   - `MYSQLPASSWORD`
+TiDB Cloud Serverless is 100% MySQL-compatible — **zero code changes** needed.
 
-6. Go to **Query** tab in Railway MySQL → run this to create your database table schema:
+1. Go to https://tidbcloud.com → **Sign up** (free, no credit card)
+2. Click **"Create Cluster"** → Select **"Serverless"** (free tier)
+3. Choose any region → click **"Create"**
+4. Wait ~30 seconds for cluster to be ready
+5. Click on your cluster → **"Connect"** button
+6. Select:
+   - Connect With: **General**
+   - Operating System: **Windows**
+7. Note down these values shown on screen:
+
+   ```
+   Host:     gateway01.xxxx.prod.aws.tidbcloud.com
+   Port:     4000
+   User:     xxxxxxxx.root
+   Password: (click "Generate Password" and copy it)
+   Database: test
+   ```
+
+8. Click **"SQL Editor"** tab → run this to create your database:
    ```sql
    CREATE DATABASE IF NOT EXISTS Ecommerce_db;
    ```
-   Railway uses the database name from `MYSQLDATABASE` — make sure it matches.
+
+9. Build your DB_URL from these values:
+   ```
+   jdbc:mysql://<Host>:<Port>/Ecommerce_db?sslMode=VERIFY_IDENTITY
+   ```
+   Example:
+   ```
+   jdbc:mysql://gateway01.us-east-1.prod.aws.tidbcloud.com:4000/Ecommerce_db?sslMode=VERIFY_IDENTITY
+   ```
+
+> ⚠️ TiDB Cloud **requires SSL** — the `?sslMode=VERIFY_IDENTITY` part is mandatory.
 
 ---
 
-## STEP 3 — Deploy Spring Boot Backend on Railway
+## STEP 3 — Deploy Spring Boot Backend on Render
 
-1. In the same Railway project → click **"+ New Service"** → **"GitHub Repo"**
-2. Select your `ecommerce-springboot-react` repo
-3. Railway will auto-detect it's a Maven project and start building
+1. Go to https://render.com → **Sign up with GitHub**
+2. Click **"New +"** → **"Web Service"**
+3. Connect your GitHub repo → select `ecommerce-springboot-react`
+4. Fill in the settings:
 
-4. Go to the backend service → **Variables** tab → Add these environment variables:
+   | Setting | Value |
+   |---------|-------|
+   | **Name** | `ecommerce-backend` |
+   | **Root Directory** | `backend` |
+   | **Runtime** | `Java` |
+   | **Build Command** | `./mvnw clean package -DskipTests` |
+   | **Start Command** | `java -jar target/backend-0.0.1-SNAPSHOT.jar` |
+   | **Instance Type** | `Free` |
 
-   | Variable | Value |
-   |----------|-------|
-   | `DB_URL` | `jdbc:mysql://<MYSQLHOST>:<MYSQLPORT>/Ecommerce_db` |
-   | `DB_USERNAME` | `<MYSQLUSER>` (from Step 2) |
-   | `DB_PASSWORD` | `<MYSQLPASSWORD>` (from Step 2) |
-   | `ALLOWED_ORIGIN` | `https://your-app.vercel.app` *(fill in after Step 4)* |
+5. Scroll to **"Environment Variables"** → add these:
 
-5. Go to **Settings** tab → set **Root Directory** to `backend`
-6. Railway will build and deploy. Wait for green status.
-7. Click **"Generate Domain"** under the Networking section
-8. Copy your backend URL — it looks like: `https://backend-production-xxxx.up.railway.app`
+   | Key | Value |
+   |-----|-------|
+   | `DB_URL` | `jdbc:mysql://<TiDB Host>:4000/Ecommerce_db?sslMode=VERIFY_IDENTITY` |
+   | `DB_USERNAME` | your TiDB username (e.g. `xxxxxxxx.root`) |
+   | `DB_PASSWORD` | your TiDB password |
+   | `ALLOWED_ORIGIN` | `https://your-app.vercel.app` *(fill after Step 4)* |
 
-> ✅ Test it: Open `https://your-backend.railway.app/products` in browser with `Role: USER` header — you should see your product list.
+6. Click **"Create Web Service"**
+7. Render will build your app (~3-5 minutes first time)
+8. Once deployed, copy your URL: `https://ecommerce-backend.onrender.com`
+
+> ✅ Test: Open `https://ecommerce-backend.onrender.com/products` in browser → should return your product list (may take 30s to wake up on first visit)
+
+> ⚠️ **Cold Start Warning**: Render free tier sleeps after 15 min of no traffic. First request after sleeping takes ~30 seconds to wake up. This is normal for a portfolio project.
 
 ---
 
 ## STEP 4 — Deploy React Frontend on Vercel
 
-1. Go to https://vercel.com → **New Project** → Import your GitHub repo
-2. Set **Root Directory** to `frontend`
-3. Framework preset will auto-detect **Vite**
-4. Under **Environment Variables**, add:
+1. Go to https://vercel.com → **Sign up with GitHub**
+2. Click **"New Project"** → Import your GitHub repo
+3. Fill in settings:
 
-   | Variable | Value |
-   |----------|-------|
-   | `VITE_API_BASE_URL` | `https://your-backend.railway.app` *(your Railway backend URL from Step 3)* |
+   | Setting | Value |
+   |---------|-------|
+   | **Root Directory** | `frontend` |
+   | **Framework Preset** | Vite (auto-detected) |
+   | **Build Command** | `npm run build` |
+   | **Output Directory** | `dist` |
 
-5. Click **Deploy** — Vercel builds and deploys in ~1 minute
-6. Copy your Vercel URL — it looks like: `https://your-app.vercel.app`
+4. Scroll to **"Environment Variables"** → add:
+
+   | Key | Value |
+   |-----|-------|
+   | `VITE_API_BASE_URL` | `https://ecommerce-backend.onrender.com` |
+
+5. Click **"Deploy"** — Vercel builds in ~1 minute
+6. Copy your Vercel URL: `https://your-app.vercel.app`
 
 ---
 
-## STEP 5 — Update CORS on Railway Backend
+## STEP 5 — Update CORS on Render Backend
 
-Now that you have the Vercel URL, go back to Railway:
+Now that you have your Vercel URL, go back to Render:
 
-1. Open your backend service → **Variables** tab
-2. Update `ALLOWED_ORIGIN` to your exact Vercel URL:
+1. Open your backend service → **"Environment"** tab
+2. Update `ALLOWED_ORIGIN` with your exact Vercel URL:
    ```
    ALLOWED_ORIGIN=https://your-app.vercel.app
    ```
-3. Railway will auto-redeploy the backend with the new CORS setting.
+3. Click **"Save Changes"** → Render will auto-redeploy
 
 ---
 
-## STEP 6 — Update `.env.production` in your repo
+## STEP 6 — Update `.env.production` and push
 
-Open `frontend/.env.production` and replace the placeholder:
+Open `frontend/.env.production` and set the real Render URL:
 
 ```env
-VITE_API_BASE_URL=https://your-backend.railway.app
+VITE_API_BASE_URL=https://ecommerce-backend.onrender.com
 ```
 
-Push the change:
+Push the change so Vercel auto-redeploys:
 ```bash
 git add frontend/.env.production
-git commit -m "chore: set production API URL"
+git commit -m "chore: set production Render backend URL"
 git push origin main
 ```
 
-Vercel will auto-redeploy the frontend.
+Vercel will detect the push and redeploy automatically (~1 min).
 
 ---
 
-## ✅ Final Verification
+## ✅ Final Verification Checklist
 
-| Check | URL |
-|-------|-----|
-| Frontend live | `https://your-app.vercel.app` |
-| Backend API | `https://your-backend.railway.app/products` |
-| Sign up works | Register a new user on the live site |
-| Products load | Product list shows from Railway MySQL |
-| Cart works | Add a product to cart |
+| Test | Expected Result |
+|------|----------------|
+| Open `https://your-app.vercel.app` | Homepage loads |
+| Click Products | Products load from TiDB Cloud via Render |
+| Sign Up | New user created in TiDB Cloud |
+| Sign In | Login works |
+| Add to Cart | Cart updates |
+| Place Order | Order is saved |
 
 ---
 
 ## 📤 Share with Recruiters
 
-Just send them your **Vercel URL**:
+Just send them **one link**:
 ```
 https://your-app.vercel.app
 ```
 
-That's it! The full stack (React → Spring Boot → MySQL) is live on the internet. 🎉
+**That's it.** Free forever. Full stack. Recruiter-ready. 🎉
 
 ---
 
 ## 🔧 Troubleshooting
 
-**Products not loading on live site?**
-- Check browser console for CORS errors
-- Make sure `ALLOWED_ORIGIN` in Railway matches your exact Vercel URL (no trailing slash)
+### Products not loading (CORS error in browser console)?
+- Make sure `ALLOWED_ORIGIN` in Render exactly matches your Vercel URL
+- No trailing slash: ✅ `https://xxx.vercel.app` ❌ `https://xxx.vercel.app/`
 
-**Railway build fails?**
-- Check build logs — usually a missing `JAVA_HOME` or Maven wrapper issue
-- Make sure Root Directory is set to `backend`
+### Render build fails?
+- Check build logs — make sure Root Directory is `backend`
+- Make sure Build Command is `./mvnw clean package -DskipTests`
 
-**Vercel build fails?**
-- Check build logs — usually a missing env var
-- Make sure Root Directory is set to `frontend`
+### TiDB connection refused?
+- Make sure you included `?sslMode=VERIFY_IDENTITY` in the DB_URL
+- Double-check username and password
+
+### Render is slow to respond?
+- This is normal on the free tier — it wakes from sleep in ~30 seconds
+- You can add a note to recruiters: *"First load may take 30s as the free server wakes up"*
+
+---
+
+## 💡 Tips for Recruiters
+
+Add this to your GitHub README:
+
+```markdown
+## 🌐 Live Demo
+🔗 **[View Live App](https://your-app.vercel.app)**
+
+> Note: Backend is hosted on Render free tier — first load may take ~30 seconds to wake up.
+
+**Tech Stack:** React • Spring Boot • MySQL (TiDB Cloud) • Vercel • Render
+```
