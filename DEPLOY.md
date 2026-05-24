@@ -67,25 +67,30 @@ TiDB Cloud Serverless is 100% MySQL-compatible — **zero code changes** needed.
    jdbc:mysql://gateway01.us-east-1.prod.aws.tidbcloud.com:4000/Ecommerce_db?sslMode=VERIFY_IDENTITY
    ```
 
+
+   <!-- jdbc:mysql://2sJYMrM4LTnzesc.root:1KnK3ydg5fqKUWX2@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/Ecommerce_db?sslMode=VERIFY_IDENTITY -->
+
 > ⚠️ TiDB Cloud **requires SSL** — the `?sslMode=VERIFY_IDENTITY` part is mandatory.
 
 ---
 
-## STEP 3 — Deploy Spring Boot Backend on Render
+## STEP 3 — Deploy Spring Boot Backend on Render (via Docker)
+
+> ℹ️ Render removed native Java support. We use **Docker** instead — a `Dockerfile` has already been added to the `backend/` folder and Render will auto-detect it.
 
 1. Go to https://render.com → **Sign up with GitHub**
 2. Click **"New +"** → **"Web Service"**
-3. Connect your GitHub repo → select `ecommerce-springboot-react`
+3. Connect your GitHub repo → select your forked `ecommerce-springboot-react`
 4. Fill in the settings:
 
    | Setting | Value |
    |---------|-------|
    | **Name** | `ecommerce-backend` |
    | **Root Directory** | `backend` |
-   | **Runtime** | `Java` |
-   | **Build Command** | `./mvnw clean package -DskipTests` |
-   | **Start Command** | `java -jar target/backend-0.0.1-SNAPSHOT.jar` |
+   | **Runtime** | **`Docker`** ← select this (NOT Java) |
    | **Instance Type** | `Free` |
+
+   > Render will auto-detect the `Dockerfile` inside `backend/` — no Build/Start command needed.
 
 5. Scroll to **"Environment Variables"** → add these:
 
@@ -97,10 +102,10 @@ TiDB Cloud Serverless is 100% MySQL-compatible — **zero code changes** needed.
    | `ALLOWED_ORIGIN` | `https://your-app.vercel.app` *(fill after Step 4)* |
 
 6. Click **"Create Web Service"**
-7. Render will build your app (~3-5 minutes first time)
+7. Render will build your Docker image (~5-8 minutes first time — it's downloading Java + building)
 8. Once deployed, copy your URL: `https://ecommerce-backend.onrender.com`
 
-> ✅ Test: Open `https://ecommerce-backend.onrender.com/products` in browser → should return your product list (may take 30s to wake up on first visit)
+> ✅ Test: Open `https://ecommerce-backend.onrender.com/products` in browser — you should see your product list (may take 30s to wake up on first visit)
 
 > ⚠️ **Cold Start Warning**: Render free tier sleeps after 15 min of no traffic. First request after sleeping takes ~30 seconds to wake up. This is normal for a portfolio project.
 
