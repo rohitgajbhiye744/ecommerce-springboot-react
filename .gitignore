@@ -1,3 +1,18 @@
+# IDE / Eclipse
 /.metadata/
+/backend/.settings/
+/backend/bin/
+/backend/.classpath
+/backend/.project
+/backend/.factorypath
+
+# Build artifacts
+/backend/target/
+
+# Frontend
 /frontend/node_modules/
 /frontend/dist/
+
+# Environment files (contain secrets - set these in Railway/Vercel dashboards)
+/frontend/.env.local
+/frontend/.env.*.local
